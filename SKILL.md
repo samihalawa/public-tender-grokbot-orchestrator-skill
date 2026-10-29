@@ -1,6 +1,6 @@
 ---
 name: public-tender-grokbot-orchestrator-skill
-description: Autonomous public procurement and tender orchestration for sole traders and SME contractors using native grokbot CLI browser agents. Enforces the ground-truth axiom, multi-platform authenticated inbox sweeps (DEHú, e-NOTUM, PLACSP, PLYCA, Vortal, SiREC, AWS, PLACE, Dematis), anti-false-expired guards, pre-filing portal mailbox verification, non-duplicate filing guards, multi-account pool rotation (hao, h999, oulang, sami), FNMT PAdES/CAdES digital signing, LCSP Regla 17 pricing safeguards, and 3-hour recurring notification sweeps across all major EU and Spanish procurement platforms.
+description: Autonomous public procurement and tender orchestration for sole traders and SME contractors using native grokbot CLI browser agents. Enforces the ground-truth axiom, multi-platform authenticated inbox sweeps (DEHú, e-NOTUM, PLACSP, PLYCA, Vortal, SiREC, AWS, PLACE, Dematis), anti-false-expired guards, pre-filing portal mailbox verification, non-duplicate filing guards, replicated parallel horizontal synchronization across grokbot pool accounts (zero single-account bottlenecks), FNMT PAdES/CAdES digital signing, LCSP Regla 17 pricing safeguards, and 3-hour recurring notification sweeps across all major EU and Spanish procurement platforms.
 ---
 
 # Public Tender Grokbot Orchestrator Skill
@@ -14,7 +14,7 @@ This skill operates strictly using the native **`grokbot` CLI** (`grokbot agent 
 
 ---
 
-## 1. The Core Ground-Truth Axiom & Multi-Platform Inbox Matrix
+## 1. The Core Ground-Truth Axiom & Multi-Platform Statutory Inbox Matrix
 
 > **Ground-Truth Axiom:** An initial submission receipt proves *only* that an envelope was delivered at that timestamp. It is **never** proof that the tender is completed, awarded, or closed. The contracting authority's communications inside authenticated portal mailboxes override all prior states and receipts.
 
@@ -33,22 +33,43 @@ Public tenders notify through specialized, authenticated legal channels that do 
 
 ---
 
-## 2. Multi-Account Pool Failover & Roster Architecture
+## 2. Replicated Parallel Horizontal Synchronization Architecture
 
-When an account hits rate limits or 100% Grok quotas, immediately pivot to the appropriate account in `grokbot pool`:
+> **Horizontal Scaling Axiom:** Accounts in the pool (`hao`, `h999`, `oulang`, `sami`) are **independent, horizontally replicated peer nodes**, NOT sequential silos or hierarchical dependencies. Workloads are sharded horizontally across all active accounts to smooth quota consumption, eliminate single points of failure, and maximize throughput.
 
-| Account | Assigned Roles | Roster Agents | Primary Specialization |
-|---|---|---|---|
-| **`hao`** | `filing`, `legal`, `general` | `filer-placsp`, `filer-pscp`, `filer-es-1`, `filer-es-2`, `filer-fr`, `filer-fr-2`, `filer-eu-2` | Primary submission execution, signing, and Java applet workflows. |
-| **`h999`** | `filing`, `regional` | `notif-placsp`, `notif-vortal`, `notif-place`, `notif-aws`, `notif-dematis`, `notif-atexo`, `notif-achatpublic` | Dedicated inbox sweepers, attachment parsers, and notification auditors. |
-| **`oulang`** | `scrapers`, `notifications` | Scraper bots and monitoring spiders | Broad search queries, tender discovery, and document download sweeps. |
-| **`sami`** | `coding`, `general` | Code execution & agent coordination | Developer tasks, verification scripts, and fallback filing. |
+### Why Vertical Account Siloing Fails:
+- **Single Point of Failure (SPOF):** Partitioning accounts into fixed roles (e.g. Account A = filer, Account B = notifier) means that if the filer exhausts its quota or gets throttled, all submissions halt.
+- **Artificial Quota Imbalance:** One account hits 100% quota rate limits while other accounts sit at 0% utilization.
+- **Brittle Pipeline Coupling:** If Account A must wait for Account B to notify it before it can file, the system inherits all the latency, timeouts, and failure modes of a distributed chain.
 
-### Quota-Exhaustion Handover Protocol:
-If `hao` is queued or hits rate limits during a high-priority deadline:
-1. Transfer read-only sweeps and notification verification immediately to `h999` or `oulang`.
-2. Inspect pending portal submissions on `h999` to determine exact requirements.
-3. If an automated filer is blocked by Java applets or platform CAPTCHAs, prepare the exact turnkey pack and present the manual or CLI route.
+### The Horizontal Replicated Model:
+1. **Node Symmetry (Any Peer Can Execute Any Role):**
+   - Every account in `grokbot pool` (`hao`, `h999`, `oulang`, `sami`) is an autonomous, symmetric peer worker capable of performing any operational step (sweeping, scraping, requirement parsing, document assembly, signing, and submission).
+   - Any worker can execute an end-to-end task without relying on another account to hand off data.
+2. **Horizontal Workload Sharding (Quota Smoothing & Parallel Throughput):**
+   - Active tenders and platforms are sharded horizontally across all active pool accounts simultaneously.
+   - Example 4-Way Shard Allocation:
+     - **Peer Worker 1 (`hao`):** Shard A — PLACSP State Tenders (FPCM, Reina Sofía, JCISAT).
+     - **Peer Worker 2 (`h999`):** Shard B — Regional & Municipal Portals (PSCP, Sobre Digital, Madrid, Canarias, Promálaga, Gomera).
+     - **Peer Worker 3 (`oulang`):** Shard C — International & Mutuas (Vortal PT, PLYCA, FIBHGM).
+     - **Peer Worker 4 (`sami`):** Shard D — French Platforms (PLACE, Dematis, AWSolutions).
+   - Sharding divides the token and request load by $N$ accounts, smoothing quota consumption evenly and preventing any single account from hitting weekly caps or rate limits.
+3. **Decoupled Horizontal Synchronization via Shared State:**
+   - **Zero Inter-Account Dependencies:** Accounts NEVER communicate directly with each other or wait for inter-agent messages.
+   - **Decoupled Single Source of Truth:** Coordination occurs strictly through the shared state layer:
+     - **Twenty CRM:** Central opportunity pipeline and lifecycle states.
+     - **Shared Git Repository (`samihalawa/licitaciones-packs`):** Signed PAdES/CAdES submission packages and SHA-256 manifests.
+     - **Google Drive (`AI_REPORTS_MASTER/`):** Permanent audit ledgers, indices, and executive reports.
+   - **Atomic Leases / Idempotency Locks:**
+     - Before processing an `expediente`, the worker inspects the shared record.
+     - If the action is already completed (valid CSV / registration receipt exists), the worker immediately skips to prevent duplicate filings.
+     - If in progress, an atomic lease with a 15-minute TTL prevents duplicate concurrent submissions.
+   - **Immediate Event Write-Through:**
+     - The instant an Acta is discovered or a filing is submitted, the worker commits the official receipt (CSV, timestamp, SHA-256) to the shared state.
+     - All other peer workers immediately see the updated status on their next cycle.
+4. **Stateless Quota Resilience:**
+   - If an account hits a temporary rate limit or cooldown, it idles autonomously without affecting any other worker.
+   - Unclaimed tasks in that shard are immediately picked up by the remaining active peer accounts from the shared queue.
 
 ---
 
@@ -111,19 +132,19 @@ When proposed as winning bidder (*propuesta de adjudicación*), the contractor m
 9. **Technical CV & Academic Credentials:** Professional CV adhering strictly to authentic experience (no foreign corporate jargon, no unverified academic titles like "ingeniero" or "máster" unless backed by official Spanish homologated degrees).
 10. **Definitive Guarantee Retention Request (*Anexo V - Retención en el Precio*):** Under Article 107.1 and 108.1 LCSP, formally request that the definitive guarantee (typically 5% of the award amount ex VAT) be constituted by means of withholding from the first invoice payments (*retención sobre el precio*), requiring ZERO upfront cash or bank guarantees.
 
+### Supplementary Rectification Protocol:
+If a pre-award filing is submitted with any minor omission (e.g. missing DNI scan, role clarification), the contractor has the legal right under administrative law to submit a **supplementary rectification pack** (*escrito de complemento/subsanación voluntaria*) into the open expediente before the term expires.
+
 ---
 
-## 6. Pre-Filing Deduplication & Native Mailbox Inspection Protocol
+## 6. Pre-Filing Reconciliation Guard (Zero Duplicate Filings)
 
-Before uploading or confirming ANY filing:
-1. **Step 1: Check In-Portal Mailbox:** Log into the contractor area (e.g., PLACSP `Mis Comunicaciones`, PSCP `Buzón`, Vortal `Mensagens`). Read every unread message.
-2. **Step 2: Inspect Submission Thread:** Check if the authority already received a response. Never submit duplicate documents unless an explicit subsanación requirement has been issued after the previous submission.
-3. **Step 3: Document Hash Matching:** Compare SHA-256 hashes of prepared files against those already accepted by the portal.
-4. **Step 4: Formal Registration Proof:** Capture the official filing receipt containing:
-   - Official Registration Number (*Número de Registro*).
-   - Secure Verification Code (*Código Seguro de Verificación - CSV*).
-   - Official Timestamp (*Sello de Tiempo FNMT / TSA*).
-   - Inventory of submitted files with SHA-256 hashes.
+> **Non-Duplication Axiom:** Never assume that local files or prepared draft folders mean an action is currently owed or pending.
+
+Before preparing or submitting any subsanación, response, or document pack:
+1. **Live Portal Thread Inspection:** Query the live portal thread, general electronic register (*seu electrònica*), or *Sobre Digital* mailbox via `grokbot agent prompt`.
+2. **Timestamp & CSV Matching:** Check if an entry for the exact same requirement or file has already been registered (matching CSV, entry number, or identical signed hash).
+3. **Immediate Deduplication:** If already submitted, abort filing immediately, mark status as `YA PRESENTADA`, record the existing receipt timestamp and CSV in tracking records, and alert the team.
 
 ---
 
@@ -158,192 +179,34 @@ All official documents, economic bids, DEUCs, and declarations must be signed wi
 
 ---
 
-## 10. Platform Architecture & Dedicated Filer/Notifier Roster
+## 10. Horizontal grokbot CLI Commands & Automation
 
-Procurement platforms are segmented into operational families across `grokbot` accounts:
+Use the native `grokbot` CLI for parallel horizontal operations:
 
-| Agent / Bot ID | Account | Scope & Portals |
-|---|---|---|
-| `filer-placsp` | `hao` | Plataforma de Contratación del Sector Público (PLACSP), PLYCA de Mutua Universal. |
-| `filer-pscp` | `hao` | Plataforma de Serveis de Contractació Pública (PSCP), licitacions.bcn.cat, Sobre Digital. |
-| `filer-es-1` | `hao` | State tenders, DEHú, Ministerios, CNMC, BOE. |
-| `filer-es-2` | `hao` | Regional platforms (Euskadi, SiREC Andalucía, Madrid, Contratos de Galicia). |
-| `filer-eu-2` | `hao` | Portugal (Vortal PT, acinGov, Base), international health consortia. |
-| `filer-fr` / `filer-fr-2` | `hao` | French portals (PLACE, AWSolutions, Maximilien, Dematis, demat-ampa). |
-| `notif-placsp` | `h999` | 24/7 dedicated PLACSP notification scanner & requirement parser. |
-| `notif-vortal` | `h999` | Dedicated Vortal message thread auditor (FIBHGM, Portugal). |
-| `notif-place` | `h999` | Dedicated PLACE France notification scanner & erratum auditor. |
-| `notif-aws` | `h999` | Dedicated AWSolutions notification scanner & attachment retriever. |
-| `notif-dematis` | `h999` | Dedicated Dematis / marches-securises negotiation auditor. |
-| `notif-atexo` / `notif-achatpublic` | `h999` | Dedicated Atexo & Achatpublic regional portal listeners. |
-
----
-
-## 11. grokbot CLI Commands & Automation
-
-Use the native `grokbot` CLI for all agent operations:
-
-### Check Status & Active Agents
+### Check Status & Multi-Account Pool
 ```bash
-grokbot agent roster [account]
 grokbot pool
+grokbot agent roster [account]
 ```
 
-### Dispatch Task to Specialized Filer or Notifier
+### Dispatch Parallel Sharded Tasks Across Independent Peer Accounts
 ```bash
-# Example: Inspect PLACSP and DEHú inboxes for pending notifications on h999
-grokbot agent prompt h999 notif-placsp "Check PLACSP Mis Comunicaciones from 01/10 onwards. List all open requirements, deadlines, and amounts. Return one line per expediente."
+# Worker 1 (hao): Sweep Shard A (PLACSP State Tenders)
+grokbot agent prompt hao filer-placsp "Check PLACSP Mis Comunicaciones from 01/10 onwards. List open requirements, deadlines, amounts. Return JSON."
 
-# Example: Inspect Vortal thread for low-bid notices on h999
-grokbot agent prompt h999 notif-vortal "Download latest notification on FIBHGM PA13-2026. Verify whether Sami Halawa Ribas is named in the requirement."
+# Worker 2 (h999): Sweep Shard B (Regional & Municipal Portals)
+grokbot agent prompt h999 notif-placsp "Inspect PSCP, Madrid 01286, Canarias, and Promalaga inboxes for pending subsanaciones. Return JSON."
 
-# Example: Check PLACE erratum on h999
-grokbot agent prompt h999 notif-place "Check consultations 26_BAM_836 and EG09MAPA2026. Compare modified annexes against submitted packages."
+# Worker 3 (oulang): Sweep Shard C (International & Mutuas)
+grokbot agent prompt oulang aee4a151-bf7f-4c29-addd-c79cce2f0a54 "Inspect Vortal PT and PLYCA message threads. Return JSON status."
+
+# Worker 4 (sami): Sweep Shard D (French Portals)
+grokbot agent prompt sami 8053fc4f-13ee-40a9-b267-f8a7ca2beb79 "Inspect PLACE and Dematis consultations for modified annexes. Return JSON."
 ```
 
-### Tail Live Filer Logs
+### Tail Live Worker Logs
 ```bash
 grokbot agent tail [account] [agent_id] [lines]
-```
-
-### Multi-Account Pool Query
-```bash
-grokbot pool
-```
-
----
-
-## 12. 3-Hour Recurring Sweep Protocol
-
-For all active tenders in progress:
-1. **Periodic Sweep (Every 3 Hours):**
-   - Query all platform families via their specialized filers and notification bots across both public boards and authenticated private inboxes (DEHú, e-NOTUM, PLACSP, PLYCA, Vortal, PLACE, Dematis).
-   - Scan for:
-     - New notifications (*Notificaciones recibidas*).
-     - Subsanación requirements with strict deadlines (counting business days under Ley 39/2015).
-     - Published *Actas de la Mesa* or candidate rankings inside the `Documentos` tab.
-     - Requests for decryption keys (*Claves de descifrado*).
-2. **Immediate Action Protocol:**
-   - If a valid requirement is addressed to the bidder: immediately alert, compute deadline date/hour, assemble required evidence, sign with FNMT QES, and file before the penultimate day of the term.
-   - Update centralized operational logs and master indices (`AI_REPORTS_MASTER/INDEX.md`).
-sica:** Official DNI copy of the contractor.
-2. **Situación Censal e IAE:** Certificado de situación censal AEAT (Modelo 036/037) and declaration of IAE exemption under Art. 82.1.c TRLRHL (< 1.000.000 € turnover).
-3. **Certificado Corriente AEAT:** Positive tax clearance certificate for public contracting.
-4. **Certificado Corriente TGSS:** Positive Social Security clearance certificate.
-5. **Acreditación de Solvencia (ROLECE):** Official certificate of registration in the *Registro Oficial de Licitadores y Empresas Clasificadas del Estado* (Art. 96 LCSP).
-6. **Compromiso de Adscripción de Medios:** Declaration committing technical personnel. In sole-trader setups, the freelancer formally covers both management and specialized technical execution.
-7. **Compromiso de Acuerdos de Nivel de Servicio (SLA):** Ratification of response times (Level 1 ≤ 2h, Level 2 ≤ 8h).
-8. **Curriculum Vitae y Titulaciones:** Detailed technical CV and university qualifications.
-9. **Garantía Definitiva (Anexo V - Retención en Precio):**
-   - **The Zero-Cash Standard:** Whenever permitted by the pliegos, always execute **Anexo V (Solicitud de retención en las primeras facturas)** under Art. 107.2 LCSP.
-   - Eliminates bank guarantee (*aval bancario*) delays, fees, and frozen capital.
-
-### The Supplementary Rectification Right:
-If a pre-award filing is submitted with any minor omission (e.g. missing DNI scan, role clarification), the contractor has the legal right under administrative law to submit a **supplementary rectification pack** (*escrito de complemento/subsanación voluntaria*) into the open expediente before the term expires.
-
----
-
-## 4. Pre-Filing Reconciliation Guard (Zero Duplicate Filings)
-
-> **Non-Duplication Axiom:** Never assume that local files or prepared draft folders mean an action is currently owed or pending.
-
-Before preparing or submitting any subsanación, response, or document pack:
-1. **Live Portal Thread Inspection:** Query the live portal thread, general electronic register (*seu electrònica*), or *Sobre Digital* mailbox via `grokbot agent prompt`.
-2. **Timestamp & CSV Matching:** Check if an entry for the exact same requirement or file has already been registered (matching CSV, entry number, or identical signed hash).
-3. **Immediate Deduplication:** If already submitted, abort filing immediately, mark status as `YA PRESENTADA`, record the existing receipt timestamp and CSV in tracking records, and alert the team.
-
----
-
-## 5. The Misattribution Trap Guard (Actas & Tablones Analysis)
-
-When reading *Actas de la Mesa de Contratación*, *Listas de Admitidos*, or public board announcements:
-1. **Multiple Bidders Caution:** Official tender minutes evaluate all bidders in a single document.
-2. **Explicit NIF Verification:** Always verify that any listed defect, requested subsanación, or low-bid justification specifically names the bidder's Tax ID (NIF / CIF) before treating it as an owed action.
-3. **Never Act on Competitor Issues:** If an acta notes that another bidder (e.g., Auren, Indra, etc.) incurred an abnormally low bid or missing certificate, record the competitive advantage but do not prepare any submission.
-
----
-
-## 6. Autonomous Worker (Autónomo / SME) Eligibility Gates
-
-Every prospective tender must pass strict eligibility filters:
-- **Entity Type:** Persona física / Autónomo (Sole Trader, microempresa).
-- **Service Scope:** 100% remote services (IT consultancy, software architecture, full-stack engineering, AI/ML engineering, prompt engineering, technical assistance, data processing, systems integration).
-- **Hard Disqualifiers:**
-  - Mandatory on-site presence or physical guard duty.
-  - Physical construction, hardware maintenance, security, or cleaning.
-  - Maximum annual turnover requirement exceeding 1.5x of verified annual billing (LCSP art. 87).
-  - Excessive team composition quotas exceeding sole-trader / micro-team capacity without sub-contracting approval.
-- **Solvency Reliance:** Leverage the European Single Procurement Document (DEUC / ESPD) declaring economic, financial, and technical solvency under standard SME protections.
-
----
-
-## 7. Financial Bidding Rules (Regla 17 Pricing Guard)
-
-To maximize win probability while mathematically preventing disqualification:
-1. **The 76%–91% Budget Corridor:** Bids must fall strictly between 76% and 91% of the Maximum Tender Budget (*Presupuesto Base de Licitación*, PBL without VAT).
-2. **Abnormally Low Bid Safeguard:** Bidding at or above 76% prevents triggering automated *baja temeraria* thresholds under Article 149 LCSP and standard table rules (*Pliego de Cláusulas Administrativas Particulares*, PCAP).
-3. **Effective Yield Floor:** Calculated effective hourly rate must strictly exceed **45 €/hour**.
-
----
-
-## 8. Digital Signature Standards
-
-All official documents, economic bids, DEUCs, and declarations must be signed with a valid Qualified Electronic Signature (QES) from an authorized Trust Service Provider (e.g. FNMT-RCM, Camerfirma):
-- **PDF Documents:** PAdES-B-LTA standard containing cryptographic timestamps.
-- **Envelopes & Raw Files:** CAdES-BES (`.p7s`) or XAdES (`.xsig`) where mandated by the specific platform (e.g., Vortal, PLACSP Sobre B).
-- **Pre-Submission Signature Check:** Verify signature integrity before submission using native verification tools:
-  ```bash
-  pdfsig document_signed.pdf
-  ```
-
----
-
-## 9. Platform Architecture & Filer Roster
-
-Procurement platforms are segmented into 7 operational families, managed via dedicated browser agents:
-
-| Agent ID | Platform Family | Scope & Portals |
-|---|---|---|
-| `filer-pscp` | Catalunya | Plataforma de Serveis de Contractació Pública (PSCP), Sobre Digital, e-Licita, e-NOTUM, AHC, Generalitat, Consorcis. |
-| `filer-es-1` | PLACSP & State | Plataforma de Contratación del Sector Público (PLACSP), DEHú, Ministerios, DGT, CNMC, BOE. |
-| `filer-es-2` | Regional Autonomous | Contratación Pública en Euskadi, SiREC Andalucía, Portal de Contratación de Madrid, Contratos de Galicia. |
-| `filer-eu-1` | European Union | SIMAP, eNotices2, Tenders Electronic Daily (TED). |
-| `filer-eu-2` | International & Enterprise | Vortal (Portugal SPMS, etc.), Jaggaer, BravoSolution, Achilles, PLYCA. |
-| `filer-local` | Municipal & Local | Seu Electrònica municipal, e-TRAM (AOC), Diputació de Barcelona, Diputació de Girona. |
-| `filer-general` | Ad-Hoc & General Support | Ad-hoc tender platforms, fallback filing, document rendering, and PAdES/CAdES signature validation. |
-
----
-
-## 10. grokbot CLI Commands & Automation
-
-Use the native `grokbot` CLI for all agent operations:
-
-### Check Status & Active Agents
-```bash
-grokbot agent roster [account]
-grokbot pool
-```
-
-### Dispatch Task to Specialized Filer
-```bash
-# Example: Inspect PLACSP and DEHú inboxes for pending notifications
-grokbot agent prompt default filer-es-1 "Check PLACSP Mis Comunicaciones and DEHú inboxes for active tenders. Inspect Documentos tabs for all tenders in 'Evaluación'. Return JSON with any pending requerimientos or actas."
-
-# Example: Inspect e-NOTUM and Sobre Digital inboxes
-grokbot agent prompt default filer-pscp "Check e-NOTUM and Sobre Digital mailboxes for any new notifications or esmenes. Do not submit anything. Return JSON status."
-
-# Example: Check Vortal message thread for prior submissions
-grokbot agent prompt default filer-eu-2 "Open tender SPMS 20260322 on Vortal. Inspect thread PT1.MSG.5963058. Return status of message 348160161 and confirm if PAdES/CAdES files are already registered."
-```
-
-### Tail Live Filer Logs
-```bash
-grokbot agent tail default filer-es-1 50
-```
-
-### Direct WebSocket Method Execution
-```bash
-grokbot agent call default getAgentStatus '{"agentId":"filer-es-1"}'
 ```
 
 ### Local Model Proxy
@@ -358,13 +221,14 @@ grokbot serve --port 8000
 ## 11. 3-Hour Recurring Sweep Protocol
 
 For all active tenders in progress:
-1. **Periodic Sweep (Every 3 Hours):**
-   - Query all 7 platform families via their specialized filers across both public boards and authenticated private inboxes (DEHú, e-NOTUM, PLACSP, PLYCA, Vortal).
+1. **Periodic Horizontal Sweep (Every 3 Hours):**
+   - Shard the 7 platform families across all available accounts in `grokbot pool` (`hao`, `h999`, `oulang`, `sami`).
+   - Query both public boards and authenticated private inboxes (DEHú, e-NOTUM, PLACSP, PLYCA, Vortal, PLACE, Dematis).
    - Scan for:
      - New notifications (*Notificaciones recibidas*).
      - Subsanación requirements with strict deadlines (counting business days under Ley 39/2015).
      - Published *Actas de la Mesa* or candidate rankings inside the `Documentos` tab.
      - Requests for decryption keys (*Claves de descifrado*).
 2. **Immediate Action Protocol:**
-   - If a valid requirement is addressed to the bidder: immediately alert, compute deadline date/hour, assemble required evidence, sign with FNMT QES, and file before the penultimate day of the term.
-   - Update centralized operational logs and master indices (`AI_REPORTS_MASTER/INDEX.md`).
+   - If a valid requirement is addressed to the bidder: immediately acquire an atomic lease in the shared state, compute deadline date/hour, assemble required evidence, sign with FNMT QES, and file before the penultimate day of the term.
+   - Commit official receipt (CSV, timestamp, SHA-256) to shared storage and update centralized operational logs (`AI_REPORTS_MASTER/INDEX.md`).
