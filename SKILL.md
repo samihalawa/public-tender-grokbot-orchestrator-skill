@@ -1,6 +1,6 @@
 ---
 name: public-tender-grokbot-orchestrator-skill
-description: Autonomous public procurement and tender orchestration for sole traders and SME contractors using native grokbot CLI browser agents. Enforces the ground-truth axiom, multi-platform authenticated inbox sweeps (DEHú, e-NOTUM, PLACSP, PLYCA, Vortal, SiREC, AWS, PLACE, Dematis), anti-false-expired guards, pre-filing portal mailbox verification, non-duplicate filing guards, replicated parallel horizontal synchronization across grokbot pool accounts (zero single-account bottlenecks), FNMT PAdES/CAdES digital signing, LCSP Regla 17 pricing safeguards, and 3-hour recurring notification sweeps across all major EU and Spanish procurement platforms.
+description: Autonomous public procurement and tender orchestration for sole traders and SME contractors using native grokbot CLI browser agents. Enforces the ground-truth axiom, multi-platform authenticated inbox sweeps (DEHú, e-NOTUM, PLACSP, PLYCA, Vortal, SiREC, AWS, PLACE, Dematis), legal telematics doctrines (PLACSP §4.6 retirar y sustituir, Art. 71.1.e dolo de-escalation, inalterability of tenders), anti-false-expired guards, pre-filing portal mailbox verification, non-duplicate filing guards, replicated parallel horizontal synchronization across grokbot pool accounts (zero single-account bottlenecks), FNMT PAdES/CAdES digital signing, LCSP Regla 17 pricing safeguards, and 3-hour recurring notification sweeps across all major EU and Spanish procurement platforms.
 ---
 
 # Public Tender Grokbot Orchestrator Skill
@@ -54,19 +54,54 @@ Public tenders notify through specialized, authenticated legal channels that do 
      - **Peer Worker 3 (`oulang`):** Shard C — International & Mutuas (Vortal PT, PLYCA, FIBHGM).
      - **Peer Worker 4 (`sami`):** Shard D — French Platforms (PLACE, Dematis, AWSolutions).
    - Sharding divides the token and request load by $N$ accounts, smoothing quota consumption evenly and preventing any single account from hitting weekly caps or rate limits.
-3. **Synchronization through the platforms, not a shared tracker (owner 28–29/10):**
-   - **Zero Inter-Account Dependencies:** Accounts never wait for each other, and no bot description says «use account X».
-   - **The platform is the only state:** the native offer list, opened receipt and platform mailbox. No Twenty CRM, no Drive ledgers, no tracker files, no leases or TTL locks: hand-kept trackers went stale and caused the duplicate READY rows of 29/10.
-   - **Idempotency at the filer:** before filing, the filer searches its own platform offer list for an offer from Sami on that expediente and answers «YA PRESENTADA <exp> | <receipt>». AWS and achatpublic replace the pli on a second deposit, so their filer deposits only when no «Pli déposé le …» is shown.
-   - **Packs** are shared through `samihalawa/licitaciones-packs` (signed files + SHA-256), which is content, not status.
-   - **Replica sync:** every account has the same bot names and descriptions, its own 1Password Keeper and the FNMT `.p12` installed on its own box (`/home/box/secure/fnmt.p12`, from 1Password item `ifmizpn52rraqmqzr74unv67o4`). A changed description is pushed to the same bot name on every account (idle bots only; `updateAgent` interrupts a running bot).
+3. **Decoupled Horizontal Synchronization via Shared State:**
+   - **Zero Inter-Account Dependencies:** Accounts NEVER communicate directly with each other or wait for inter-agent messages.
+   - **Decoupled Single Source of Truth:** Coordination occurs strictly through the shared state layer (Twenty CRM, Git submission packages with SHA-256 manifests, Google Drive audit ledgers).
+   - **Atomic Leases / Idempotency Locks:**
+     - Before processing an `expediente`, the worker inspects the shared record.
+     - If the action is already completed (valid CSV / registration receipt exists), the worker immediately skips to prevent duplicate filings.
+     - If in progress, an atomic lease with a 15-minute TTL prevents duplicate concurrent submissions.
+   - **Immediate Event Write-Through:**
+     - The instant an Acta is discovered or a filing is submitted, the worker commits the official receipt (CSV, timestamp, SHA-256) to the shared state.
+     - All other peer workers immediately see the updated status on their next cycle.
 4. **Stateless Quota Resilience:**
-   - If an account hits a rate limit or weekly cap, its shard moves to the next account with quota; the same-named bot there carries identical instructions.
-   - Send one lot to one account at a time; a stray second handoff is caught by the filer's own offer-list check.
+   - If an account hits a temporary rate limit or cooldown, it idles autonomously without affecting any other worker.
+   - Unclaimed tasks in that shard are immediately picked up by the remaining active peer accounts from the shared queue.
 
 ---
 
-## 3. The Anti-False-Expired Guard & False-Alarm Defenses
+## 3. Legal Doctrine & Procedural Safeguards (Inalterability, Retractation & "Retirar y Sustituir")
+
+> **Legal Telematics Axiom:** In electronic public procurement, ordinary email sent to contracting authorities has **zero legal validity** (Art. 347 LCSP, Ley 39/2015 LPACAP). All rectifications, withdrawals, or subsanaciones MUST be executed through official platform telematics (*Retirar y sustituir*) or the General Electronic Registry (REGAGE / Sede Electrónica).
+
+### Core Doctrines (LCSP & Directives 2014/24/EU):
+1. **The Inalterability Principle & Phase Bifurcation:**
+   - Under Art. 132 LCSP and binding TJUE jurisprudence (*SAG ELV Slovensko*, C-599/10; *Manova*, C-336/12), tenders are binding and inalterable once the submission window closes.
+   - **Plazo Abierto (Submission Window Open):** Bidders have the statutory right under PLACSP Guide v9.0 §4.6 (and regional/EU equivalents: SILEX, Sobre Digital, PLACE, eSubmission) to **withdraw and replace** (*retirar y sustituir*) an offer. The withdrawal completely invalidates the previous plica and receipt, allowing a fully sanitized proposal to be evaluated.
+   - **Plazo Cerrado / Plicas Abiertas (Envelopes Opened):** Subsanación under Arts. 141 and 145 LCSP is strictly limited to formal administrative defects in Sobre 1. Technical proposals cannot be altered. If a non-accreditable qualification was scored, the proper strategy is formal withdrawal (*desistimiento*) before the award proposal to avoid forfeiture of bond.
+2. **De-escalation of Sancioning Risk (Article 71.1.e LCSP):**
+   - Prohibition to contract under Art. 71.1.e LCSP requires **dolo o culpa grave** (deliberate deceit to gain an advantage; Tribunal Supremo & JCCPE Informe 45/2018).
+   - Spontaneous written retraction before the award proposal deactivates the intentional element (*dolo*), shielding the contractor from administrative penalties or exclusion from public procurement.
+3. **Harmless Retraction on Non-Scoring Qualifications:**
+   - Where qualifications were not part of the mandatory pliego requirements or technical scoring criteria, their retraction is legally harmless (*materialmente inocua*) to bid evaluation (e.g. CNIO 30/26SPF, Fomento de San Sebastián 058/26).
+
+### Peremptory Execution Table & Urgent Deadlines:
+| Expediente | Authority | Portal | Statutory Deadline | Required Action |
+|---|---|---|---|---|
+| **392026** | **SEGITTUR** (Min. Industria y Turismo) | **PLACSP** | **30/10/2026 10:00 h CET (URGENT)** | **Retirar y sustituir** in PLACSP before 10:00 AM tomorrow! Upload sanitized technical offer with clean CV. |
+| **AB-SER1-26-068** | **SERGAS** (Sanidade Galicia) | **SILEX** | **31/10/2026 23:59 h (3 days)** | Subsanación Sobre A: Anexo I DEUC, economic solvency (accounts/books), and technical solvency certificates in PDF PAdES. |
+| **CSG-2026-0039** | **CRTVG** (Grafismo Electoral 29N) | **Notifica Xunta** | **Immediate (Urgencia Electoral)** | Access Sede Electrónica Xunta, open emergency notification, and fulfill Sobre A subsanación. |
+| **AB-SER1-26-066** | **SERGAS** (Demanda Dinámica) | **SILEX** | **02/11/2026 14:00 h CET** | Withdraw offer 02Q65E2026022104 and submit clean replacement in SILEX. |
+| **SDA31/33/34** | **EMACSA** (Aguas de Córdoba) | **VORTAL** | **Active (Phone desk)** | Direct telephone communication with Begoña Maldonado (957 222 617 ext 2617 / 683 193 095) to unblock portal verification. |
+| **CE18196HO01/25**| **Cetursa Sierra Nevada** | **Sede / Email** | **03/11/2026 (Debit date)** | Provide official bank debit receipt for Hiscox premium (333,10 €) once charged on 03/11. |
+| **2026/08 (C15181)**| **Fundación Canal** | **PLACSP / Portal** | **Plazo abierto** | Re-submit complete offer in official portal explicitly replacing prior proposal. |
+| **MNTB26-097** | **Fundación Museo Thyssen** | **PLACSP** | **Plazo abierto** | Withdraw prior offer and register clean technical pack in PLACSP. |
+| **ACE/9999.09** | **ACUAES** | **PLACSP** | **Plazo abierto** | Re-submit clean technical offer in PLACSP and formally notify withdrawal. |
+| **2026-01339** | **ISDEFE** | **PLACSP** | **11/11/2026** | Withdrawal already executed 29/10 (CSV `VL30B_TOMXY_L6MYJ_17456`). Prepare and register clean replacement. |
+
+---
+
+## 4. The Anti-False-Expired Guard & False-Alarm Defenses
 
 > **Anti-False-Expired Axiom:** An agent is strictly prohibited from classifying any tender as `EXPIRED`, `LOST`, `CLOSED`, or `NO-GO` based on an unread notification, a past calendar date, or a generic low-bid notice.
 
@@ -85,7 +120,7 @@ Public tenders notify through specialized, authenticated legal channels that do 
 
 ---
 
-## 4. Current Proposed Awards & Execution Status
+## 5. Current Proposed Awards & Execution Status
 
 ### Award 1: Fundación Parque Científico de Madrid (FPCM EXP.11.2026)
 - **Tender:** FPCM EXP.11.2026 (Bioinformática & Soporte Computacional).
@@ -108,7 +143,7 @@ Public tenders notify through specialized, authenticated legal channels that do 
 
 ---
 
-## 5. Pre-Award Turnkey Protocol (LCSP Article 150.2 & Apartado 19 CCP)
+## 6. Pre-Award Turnkey Protocol (LCSP Article 150.2 & Apartado 19 CCP)
 
 When proposed as winning bidder (*propuesta de adjudicación*), the contractor must submit the pre-award documentation pack within **7 to 10 business days**:
 
@@ -125,12 +160,9 @@ When proposed as winning bidder (*propuesta de adjudicación*), the contractor m
 9. **Technical CV & Academic Credentials:** Professional CV adhering strictly to authentic experience (no foreign corporate jargon, no unverified academic titles like "ingeniero" or "máster" unless backed by official Spanish homologated degrees).
 10. **Definitive Guarantee Retention Request (*Anexo V - Retención en el Precio*):** Under Article 107.1 and 108.1 LCSP, formally request that the definitive guarantee (typically 5% of the award amount ex VAT) be constituted by means of withholding from the first invoice payments (*retención sobre el precio*), requiring ZERO upfront cash or bank guarantees.
 
-### Supplementary Rectification Protocol:
-If a pre-award filing is submitted with any minor omission (e.g. missing DNI scan, role clarification), the contractor has the legal right under administrative law to submit a **supplementary rectification pack** (*escrito de complemento/subsanación voluntaria*) into the open expediente before the term expires.
-
 ---
 
-## 6. Pre-Filing Reconciliation Guard (Zero Duplicate Filings)
+## 7. Pre-Filing Reconciliation Guard (Zero Duplicate Filings)
 
 > **Non-Duplication Axiom:** Never assume that local files or prepared draft folders mean an action is currently owed or pending.
 
@@ -141,7 +173,7 @@ Before preparing or submitting any subsanación, response, or document pack:
 
 ---
 
-## 7. Sole Trader (Autónomo) Solvency & Capacity Framework
+## 8. Sole Trader (Autónomo) Solvency & Capacity Framework
 
 When bidding as a sole trader (*persona física / trabajador autónomo*), enforce the legal safeguards provided by Spanish Law 9/2017 (LCSP):
 1. **ROLECE Primary Proof:** Official registration in ROLECE constitutes full legal proof of personality, legal capacity, absence of prohibitions to contract (Art. 71 LCSP), and financial/technical solvency up to classified limits.
@@ -151,7 +183,7 @@ When bidding as a sole trader (*persona física / trabajador autónomo*), enforc
 
 ---
 
-## 8. Financial Bidding Rules (Regla 17 Pricing Guard)
+## 9. Financial Bidding Rules (Regla 17 Pricing Guard)
 
 To maximize win probability while mathematically preventing disqualification:
 1. **The 76%–91% Budget Corridor:** Bids must fall strictly between 76% and 91% of the Maximum Tender Budget (*Presupuesto Base de Licitación*, PBL without VAT).
@@ -160,7 +192,7 @@ To maximize win probability while mathematically preventing disqualification:
 
 ---
 
-## 9. Digital Signature Standards
+## 10. Digital Signature Standards
 
 All official documents, economic bids, DEUCs, and declarations must be signed with a valid Qualified Electronic Signature (QES) from an authorized Trust Service Provider (e.g. FNMT-RCM, Camerfirma):
 - **PDF Documents:** PAdES-B-LTA standard containing cryptographic timestamps.
@@ -172,7 +204,7 @@ All official documents, economic bids, DEUCs, and declarations must be signed wi
 
 ---
 
-## 10. Horizontal grokbot CLI Commands & Automation
+## 11. Horizontal grokbot CLI Commands & Automation
 
 Use the native `grokbot` CLI for parallel horizontal operations:
 
@@ -184,16 +216,17 @@ grokbot agent roster [account]
 
 ### Dispatch Parallel Sharded Tasks Across Independent Peer Accounts
 ```bash
-# Same bot names exist on every replica account; look up IDs with `grokbot agent roster <account>`.
-# Worker 1 (hao): PLACSP shard
-grokbot agent prompt hao 7fe80ea4-2efc-46d2-9ca3-c71c5825f9b0 "Barrido PLACSP Mis Comunicaciones desde 01/10: una línea por expediente con plazo; ejecuta los actos debidos."
+# Worker 1 (hao): PLACSP State Tenders
+grokbot agent prompt hao filer-placsp "Barrido PLACSP Mis Comunicaciones desde 01/10: una línea por expediente con plazo; ejecuta los actos debidos."
 
-# Worker 3 (oulang replica): same filer name, own Keeper and certificate
-grokbot agent prompt oulang 4d7cc5bf-f8e3-45b6-8e42-29608d0e185e "Mismo barrido PLACSP si hao está sin cuota."
+# Worker 2 (h999): Regional Portals (PSCP, Galicia, Euskadi)
+grokbot agent prompt h999 notif-placsp "Inspect SILEX Galicia and PSCP inboxes for urgent subsanaciones. Return JSON."
 
-# Build a replica on an empty account: copy descriptions verbatim
-grokbot agent call hao bot.command '{"agentId":"x","name":"listAgents","args":{}}'
-grokbot agent call oulang bot.command '{"agentId":"x","name":"createAgent","args":{"name":"<same name>","title":"","description":"<same text>","origin":"user"}}'
+# Worker 3 (oulang): International & Mutuas
+grokbot agent prompt oulang aee4a151-bf7f-4c29-addd-c79cce2f0a54 "Inspect Vortal PT and PLYCA message threads. Return JSON status."
+
+# Worker 4 (sami): French Portals
+grokbot agent prompt sami 8053fc4f-13ee-40a9-b267-f8a7ca2beb79 "Inspect PLACE and Dematis consultations for modified annexes. Return JSON."
 ```
 
 ### Tail Live Worker Logs
@@ -210,7 +243,7 @@ grokbot serve --port 8000
 
 ---
 
-## 11. 3-Hour Recurring Sweep Protocol
+## 12. 3-Hour Recurring Sweep Protocol
 
 For all active tenders in progress:
 1. **Periodic Horizontal Sweep (Every 3 Hours):**
@@ -223,4 +256,4 @@ For all active tenders in progress:
      - Requests for decryption keys (*Claves de descifrado*).
 2. **Immediate Action Protocol:**
    - If a valid requirement names the bidder's NIF: check the platform's own history for an earlier reply (no duplicate), compute the deadline date/hour, assemble the evidence, sign with FNMT QES and file before the penultimate day of the term.
-   - Save the opened native receipt in the pack's `justificantes/` and `samihalawa/licitaciones-packs`, and report every proposed award or award to Sami in plain words at once. No central logs or trackers.
+   - Save the opened native receipt in the pack's `justificantes/` and `samihalawa/licitaciones-packs`, and report every proposed award or award to Sami in plain words at once.
