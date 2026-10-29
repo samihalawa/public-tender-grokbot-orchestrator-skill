@@ -127,7 +127,7 @@ Holds:
 Does not hold:
 - **Replacing bids over CV or credential wording.** The owner rule in §3 governs.
 - **Treating contract value as net cash margin.** Labour time is the main cost; rank by expected profit per effort.
-- **Chasing lots above the €80k cap** (e.g. €100k–€210k IT platforms). In Spain the risk runs the other way: if ranked first without real solvency, the 3 % art. 150.2 penalty applies. Withdraw such filed Spanish bids before their deadline, without replacing them (owner 28–29/10). Outside Spain there is no such penalty: leave them.
+- **Treating a rule as a fact without checking it (owner 29/10: «never assume, rules may not be true»).** Verified in the BOE text: art. 150.2 LCSP charges 3 % of the base budget excluding VAT, plus the art. 71.2.a ban risk, only when the best-ranked bidder fails to complete the requerimiento in time. It applies at any value, so the €80k cap is an owner preference, not a legal threshold. Its application to non-AAPP contracting entities (state companies, some foundations and consortia) depends on the pliego. Before any withdrawal (irreversible), read the lot's actual solvency, guarantee and penalty clauses. Withdraw only when the bid would demonstrably fail the award documentation and the pliego exposes a penalty, citing the clause. Outside Spain there is no equivalent penalty.
 - **Private retainers, npm packages and cloud-credit alerts.** Not tender work; keep them out of tender sweeps.
 
 ## 4. The Anti-False-Expired Guard & False-Alarm Defenses
