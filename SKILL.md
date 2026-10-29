@@ -114,6 +114,22 @@ Controller protocol: one «BARRIDO» per bot family on one replica account per w
 
 ---
 
+## 3b. Lessons Filtered From the 29/10 Evaluation (what holds, what does not)
+
+Holds:
+- **Channel:** buyer email changes nothing legally. Window open → withdraw/replace on the platform; window closed → the bid is frozen until the Mesa issues a formal requerimiento.
+- **Euskadi Contratación:** a receipted bid cannot be withdrawn by the bidder. Withdrawal goes through platform support (kontratazioa@euskadi.eus) and the buyer's approval on the system, then re-upload before the deadline.
+- **Deferred verification:** many pliegos check CVs and qualifications only for the proposed awardee (e.g. Donostia 058/26, Carátula cl. 17, ten business days). Nothing is owed before that requerimiento.
+- **German procedures:** the procedure language (Verfahrenssprache Deutsch) and the Bietercockpit are exclusive. An English email or an off-portal filing is void.
+- **Deemed-served e-notifications:** they are rejected 10 calendar days after being made available (art. 43.2 Ley 39/2015). Every certificate sede needs an owner. Grok Bot owns the inboxes no filer covers: DEHú, Junta de Castilla y León notifica (ae.jcyl.es/notifica), Xunta Notifica, e-NOTUM, Euskadi Mi Carpeta. An unowned sede is how a Registro de Formadores inclusion (JCyL EXP 1263, accept by 08/11) went unseen.
+- **Negotiation rounds** (e.g. RRTP 66, Dematis 1182895): check whether each deposit must be e-signed, and watch for BAFO requests until the round closes.
+
+Does not hold:
+- **Replacing bids over CV or credential wording.** The owner rule in §3 governs.
+- **Treating contract value as net cash margin.** Labour time is the main cost; rank by expected profit per effort.
+- **Chasing lots above the €80k cap** (e.g. €100k–€210k IT platforms). In Spain the risk runs the other way: if ranked first without real solvency, the 3 % art. 150.2 penalty applies. Withdraw such filed Spanish bids before their deadline, without replacing them (owner 28–29/10). Outside Spain there is no such penalty: leave them.
+- **Private retainers, npm packages and cloud-credit alerts.** Not tender work; keep them out of tender sweeps.
+
 ## 4. The Anti-False-Expired Guard & False-Alarm Defenses
 
 > **Anti-False-Expired Axiom:** An agent is strictly prohibited from classifying any tender as `EXPIRED`, `LOST`, `CLOSED`, or `NO-GO` based on an unread notification, a past calendar date, or a generic low-bid notice.
