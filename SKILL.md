@@ -70,7 +70,20 @@ Public tenders notify through specialized, authenticated legal channels that do 
 
 ---
 
+## 2b. Post-Filing Watch Built Into Every Bot (owner 29/10)
+
+Misses came from three gaps: bots read only their inbox, while actas, awards and changed pliegos appear on each tender's public page; no bot owned a bid after filing it; and sweep prompts were counted on their first acknowledgement. So every filer, notif and Grok Bot description on every replica account ends with the same «VIGILANCIA POST-PRESENTACIÓN» block:
+
+- A filed bid stays the bot's responsibility until formalised, excluded or awarded to someone else.
+- On «BARRIDO», at the start of any work turn and after each filing, the bot covers, per platform: native inbox (incl. e-notifications deemed served after 10 days), its own submitted-offer list, and the public page of every open filed case (actas, admission lists, classification, proposed award, award, requerimientos, key requests, negotiation rounds, changed pliegos/annexes/price forms/Q&A).
+- Only items naming NIF 02558168Q are Sami's. Owed acts are executed at once in deadline order with real documents. A material pliego/annex change with the deadline open means replacing the bid only if it would otherwise be invalid. Never pay. Email is never the source of truth.
+- Final reply lines, money first: «⚑ PROPUESTO|ADJUDICADO …», «ACTO HECHO …», «REQUERIMIENTO … plazo … falta …», «SUSTITUIR … plazo … qué cambió», «PERDIDO … ganador y precio», per platform «SIN NOVEDADES …» or «BLOQUEO … error literal».
+
+Controller protocol: one «BARRIDO» per bot family on one replica account per wave (≤4 concurrent turns per account); read final lines 20–30 minutes later with `grokbot agent tail <acct> <id> 60 --json`; report every ⚑ line to Sami at once; re-route any act whose bot stays silent (quota) to the same-named bot on another account. Read a bot's tail before prompting it; one controller per bot, never re-send a case another controller already handed it. Keep the block identical across accounts (push to idle bots only).
+
 ## 3. Legal Doctrine & Procedural Safeguards (Inalterability, Retractation & "Retirar y Sustituir")
+
+> **Owner rule (29/10, governs this section):** do not withdraw, replace or resubmit filed bids over CV or credential wording; the HKU BEng / UPM course mentions are simply left out of new documents («just remove it going forward, don't resubmit, don't focus on that»). A filed bid stays as is whenever there is no fine risk (the only money risk is the 3 % art. 150.2 penalty). Withdraw-and-replace is used only when a material change to the pliegos or price annexes would make the filed bid invalid while the deadline is open.
 
 > **Legal Telematics Axiom:** In electronic public procurement, ordinary email sent to contracting authorities has **zero legal validity** (Art. 347 LCSP, Ley 39/2015 LPACAP). All rectifications, withdrawals, or subsanaciones MUST be executed through official platform telematics (*Retirar y sustituir*) or the General Electronic Registry (REGAGE / Sede Electrónica).
 
@@ -88,16 +101,16 @@ Public tenders notify through specialized, authenticated legal channels that do 
 ### Peremptory Execution Table & Urgent Deadlines:
 | Expediente | Authority | Portal | Statutory Deadline | Required Action |
 |---|---|---|---|---|
-| **392026** | **SEGITTUR** (Min. Industria y Turismo) | **PLACSP** | **30/10/2026 10:00 h CET (URGENT)** | **Retirar y sustituir** in PLACSP before 10:00 AM tomorrow! Upload sanitized technical offer with clean CV. |
+| **392026** | **SEGITTUR** (Min. Industria y Turismo) | **PLACSP** | **30/10/2026 10:00 h CET (URGENT)** | Leave as is unless the pliegos changed materially (owner 29/10: no resubmission over credential wording). |
 | **AB-SER1-26-068** | **SERGAS** (Sanidade Galicia) | **SILEX** | **31/10/2026 23:59 h (3 days)** | Subsanación Sobre A: Anexo I DEUC, economic solvency (accounts/books), and technical solvency certificates in PDF PAdES. |
 | **CSG-2026-0039** | **CRTVG** (Grafismo Electoral 29N) | **Notifica Xunta** | **Immediate (Urgencia Electoral)** | Access Sede Electrónica Xunta, open emergency notification, and fulfill Sobre A subsanación. |
-| **AB-SER1-26-066** | **SERGAS** (Demanda Dinámica) | **SILEX** | **02/11/2026 14:00 h CET** | Withdraw offer 02Q65E2026022104 and submit clean replacement in SILEX. |
+| **AB-SER1-26-066** | **SERGAS** (Demanda Dinámica) | **SILEX** | **02/11/2026 14:00 h CET** | Leave as is unless the pliegos changed materially (owner 29/10: no resubmission over credential wording). |
 | **SDA31/33/34** | **EMACSA** (Aguas de Córdoba) | **VORTAL** | **Active (Phone desk)** | Direct telephone communication with Begoña Maldonado (957 222 617 ext 2617 / 683 193 095) to unblock portal verification. |
 | **CE18196HO01/25**| **Cetursa Sierra Nevada** | **Sede / Email** | **03/11/2026 (Debit date)** | Provide official bank debit receipt for Hiscox premium (333,10 €) once charged on 03/11. |
 | **2026/08 (C15181)**| **Fundación Canal** | **PLACSP / Portal** | **Plazo abierto** | Re-submit complete offer in official portal explicitly replacing prior proposal. |
-| **MNTB26-097** | **Fundación Museo Thyssen** | **PLACSP** | **Plazo abierto** | Withdraw prior offer and register clean technical pack in PLACSP. |
-| **ACE/9999.09** | **ACUAES** | **PLACSP** | **Plazo abierto** | Re-submit clean technical offer in PLACSP and formally notify withdrawal. |
-| **2026-01339** | **ISDEFE** | **PLACSP** | **11/11/2026** | Withdrawal already executed 29/10 (CSV `VL30B_TOMXY_L6MYJ_17456`). Prepare and register clean replacement. |
+| **MNTB26-097** | **Fundación Museo Thyssen** | **PLACSP** | **Plazo abierto** | Leave as is unless the pliegos changed materially (owner 29/10: no resubmission over credential wording). |
+| **ACE/9999.09** | **ACUAES** | **PLACSP** | **Plazo abierto** | Leave as is unless the pliegos changed materially (owner 29/10: no resubmission over credential wording). |
+| **2026-01339** | **ISDEFE** | **PLACSP** | **11/11/2026** | Leave as is unless the pliegos changed materially (owner 29/10: no resubmission over credential wording). |
 
 ---
 
