@@ -54,22 +54,15 @@ Public tenders notify through specialized, authenticated legal channels that do 
      - **Peer Worker 3 (`oulang`):** Shard C — International & Mutuas (Vortal PT, PLYCA, FIBHGM).
      - **Peer Worker 4 (`sami`):** Shard D — French Platforms (PLACE, Dematis, AWSolutions).
    - Sharding divides the token and request load by $N$ accounts, smoothing quota consumption evenly and preventing any single account from hitting weekly caps or rate limits.
-3. **Decoupled Horizontal Synchronization via Shared State:**
-   - **Zero Inter-Account Dependencies:** Accounts NEVER communicate directly with each other or wait for inter-agent messages.
-   - **Decoupled Single Source of Truth:** Coordination occurs strictly through the shared state layer:
-     - **Twenty CRM:** Central opportunity pipeline and lifecycle states.
-     - **Shared Git Repository (`samihalawa/licitaciones-packs`):** Signed PAdES/CAdES submission packages and SHA-256 manifests.
-     - **Google Drive (`AI_REPORTS_MASTER/`):** Permanent audit ledgers, indices, and executive reports.
-   - **Atomic Leases / Idempotency Locks:**
-     - Before processing an `expediente`, the worker inspects the shared record.
-     - If the action is already completed (valid CSV / registration receipt exists), the worker immediately skips to prevent duplicate filings.
-     - If in progress, an atomic lease with a 15-minute TTL prevents duplicate concurrent submissions.
-   - **Immediate Event Write-Through:**
-     - The instant an Acta is discovered or a filing is submitted, the worker commits the official receipt (CSV, timestamp, SHA-256) to the shared state.
-     - All other peer workers immediately see the updated status on their next cycle.
+3. **Synchronization through the platforms, not a shared tracker (owner 28–29/10):**
+   - **Zero Inter-Account Dependencies:** Accounts never wait for each other, and no bot description says «use account X».
+   - **The platform is the only state:** the native offer list, opened receipt and platform mailbox. No Twenty CRM, no Drive ledgers, no tracker files, no leases or TTL locks: hand-kept trackers went stale and caused the duplicate READY rows of 29/10.
+   - **Idempotency at the filer:** before filing, the filer searches its own platform offer list for an offer from Sami on that expediente and answers «YA PRESENTADA <exp> | <receipt>». AWS and achatpublic replace the pli on a second deposit, so their filer deposits only when no «Pli déposé le …» is shown.
+   - **Packs** are shared through `samihalawa/licitaciones-packs` (signed files + SHA-256), which is content, not status.
+   - **Replica sync:** every account has the same bot names and descriptions, its own 1Password Keeper and the FNMT `.p12` installed on its own box (`/home/box/secure/fnmt.p12`, from 1Password item `ifmizpn52rraqmqzr74unv67o4`). A changed description is pushed to the same bot name on every account (idle bots only; `updateAgent` interrupts a running bot).
 4. **Stateless Quota Resilience:**
-   - If an account hits a temporary rate limit or cooldown, it idles autonomously without affecting any other worker.
-   - Unclaimed tasks in that shard are immediately picked up by the remaining active peer accounts from the shared queue.
+   - If an account hits a rate limit or weekly cap, its shard moves to the next account with quota; the same-named bot there carries identical instructions.
+   - Send one lot to one account at a time; a stray second handoff is caught by the filer's own offer-list check.
 
 ---
 
@@ -191,17 +184,16 @@ grokbot agent roster [account]
 
 ### Dispatch Parallel Sharded Tasks Across Independent Peer Accounts
 ```bash
-# Worker 1 (hao): Sweep Shard A (PLACSP State Tenders)
-grokbot agent prompt hao filer-placsp "Check PLACSP Mis Comunicaciones from 01/10 onwards. List open requirements, deadlines, amounts. Return JSON."
+# Same bot names exist on every replica account; look up IDs with `grokbot agent roster <account>`.
+# Worker 1 (hao): PLACSP shard
+grokbot agent prompt hao 7fe80ea4-2efc-46d2-9ca3-c71c5825f9b0 "Barrido PLACSP Mis Comunicaciones desde 01/10: una línea por expediente con plazo; ejecuta los actos debidos."
 
-# Worker 2 (h999): Sweep Shard B (Regional & Municipal Portals)
-grokbot agent prompt h999 notif-placsp "Inspect PSCP, Madrid 01286, Canarias, and Promalaga inboxes for pending subsanaciones. Return JSON."
+# Worker 3 (oulang replica): same filer name, own Keeper and certificate
+grokbot agent prompt oulang 4d7cc5bf-f8e3-45b6-8e42-29608d0e185e "Mismo barrido PLACSP si hao está sin cuota."
 
-# Worker 3 (oulang): Sweep Shard C (International & Mutuas)
-grokbot agent prompt oulang aee4a151-bf7f-4c29-addd-c79cce2f0a54 "Inspect Vortal PT and PLYCA message threads. Return JSON status."
-
-# Worker 4 (sami): Sweep Shard D (French Portals)
-grokbot agent prompt sami 8053fc4f-13ee-40a9-b267-f8a7ca2beb79 "Inspect PLACE and Dematis consultations for modified annexes. Return JSON."
+# Build a replica on an empty account: copy descriptions verbatim
+grokbot agent call hao bot.command '{"agentId":"x","name":"listAgents","args":{}}'
+grokbot agent call oulang bot.command '{"agentId":"x","name":"createAgent","args":{"name":"<same name>","title":"","description":"<same text>","origin":"user"}}'
 ```
 
 ### Tail Live Worker Logs
@@ -230,5 +222,5 @@ For all active tenders in progress:
      - Published *Actas de la Mesa* or candidate rankings inside the `Documentos` tab.
      - Requests for decryption keys (*Claves de descifrado*).
 2. **Immediate Action Protocol:**
-   - If a valid requirement is addressed to the bidder: immediately acquire an atomic lease in the shared state, compute deadline date/hour, assemble required evidence, sign with FNMT QES, and file before the penultimate day of the term.
-   - Commit official receipt (CSV, timestamp, SHA-256) to shared storage and update centralized operational logs (`AI_REPORTS_MASTER/INDEX.md`).
+   - If a valid requirement names the bidder's NIF: check the platform's own history for an earlier reply (no duplicate), compute the deadline date/hour, assemble the evidence, sign with FNMT QES and file before the penultimate day of the term.
+   - Save the opened native receipt in the pack's `justificantes/` and `samihalawa/licitaciones-packs`, and report every proposed award or award to Sami in plain words at once. No central logs or trackers.
