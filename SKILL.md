@@ -149,6 +149,14 @@ Does not hold:
 
 ---
 
+## 4b. False-Limitation Guard: «no account», «blocked», «not possible» (owner 30/10)
+
+A bot or Keeper saying an account is missing, a portal is blocked or a step is impossible is a claim to verify, not a result.
+- **Credentials:** before accepting «sin cuenta / not in vault», search EVERY 1Password vault through Connect (`GET /v1/vaults`, `/v1/vaults/<id>/items`). Match on title, `urls[].href` domain, `additionalInformation` and platform alias (Jaggaer, Atexo, Solaere, In-tend, Proactis, Panacea, GOV.UK One Login). On 29–30/10, nine accounts reported missing were in the Master Vault.
+- **Tool limits:** «HTTP-only login impossible», «captcha» or «DCE needs identification» means switching to the bot's browser session and retrying once logged in, before reporting BLOQUEO.
+- **Scout labels:** «account needed / registration needed» are hints. Run the vault search before routing a lot as blocked.
+- **Reports:** a BLOQUEO must quote the search or literal error it rests on. The controller re-dispatches every false one at once and notes the item IDs.
+
 ## 5. Current Proposed Awards & Execution Status
 
 ### Award 1: Fundación Parque Científico de Madrid (FPCM EXP.11.2026)
